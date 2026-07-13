@@ -2,48 +2,75 @@ package com.aistudio.dieselstationsms.kxmpzq
 
 import android.content.Context
 import android.util.Log
-import com.aistudio.dieselstationsms.kxmpzq.data.repository.StationRepository
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.BlockThreshold
+import com.google.ai.client.generativeai.type.HarmCategory
+import com.google.ai.client.generativeai.type.SafetySetting
+import com.google.ai.client.generativeai.type.content
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class GeminiAlHelper(private val context: Context) {
-
+class GeminiAIHelper(private val context: Context) {
+    
     companion object {
-        private const val TAG = "GeminiAlHelper"
+        private const val TAG = "GeminiAIHelper"
     }
-
-    suspend fun getInsight(repository: StationRepository): String {
+    
+    private var generativeModel: GenerativeModel? = null
+    private val chatHistory = mutableListOf<com.google.ai.client.generativeai.type.Content>()
+    
+    fun initialize(apiKey: String) {
+        try {
+            val harassmentSafety = SafetySetting(HarmCategory.HARASSMENT, BlockThreshold.ONLY_HIGH)
+            val hateSpeechSafety = SafetySetting(HarmCategory.HATE_SPEECH, BlockThreshold.ONLY_HIGH)
+            
+            generativeModel = GenerativeModel(
+                modelName = "gemini-1.5-flash",
+                apiKey = apiKey,
+                safetySettings = listOf(harassmentSafety, hateSpeechSafety)
+            )
+            Log.d(TAG, "Gemini AI initialized")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize Gemini", e)
+        }
+    }
+    
+    suspend fun sendMessage(message: String): String {
         return withContext(Dispatchers.IO) {
             try {
-                val dashboard = repository.getDashboard()
-                val data = dashboard.getOrNull()
-                if (data != null) {
-                    val totalSales = data.totalSales
-                    val customers = data.totalCustomers
-                    val lowStock = data.lowStockItems
-                    "تحليل المحطة:\n" +
-                            "- إجمالي المبيعات: $totalSales\n" +
-                            "- عدد العملاء: $customers\n" +
-                            "- أصناف منخفضة المخزون: $lowStock\n" +
-                            "توصية: مراجعة المخزون المنخفض وتعزيز تسويق العملاء."
-                } else {
-                    "تعذر الحصول على بيانات التحليل. تأكد من اتصال الشبكة."
+                val model = generativeModel ?: return@withContext "خطأ: النموذج غير مهيأ"
+                
+                val context = """
+                    أنت مساعد ذكي لمحطة وقود. ساعد في:
+                    - إدارة المخزون والمبيعات
+                    - متابعة العملاء والموردين
+                    - حسابات الورديات
+                    - التقارير المالية
+                    
+                    السؤال: $message
+                """.trimIndent()
+                
+                val chat = model.startChat(history = chatHistory)
+                val response = chat.sendMessage(context)
+                val text = response.text ?: "لم أفهم"
+                
+                chatHistory.add(content("user") { text(message) })
+                chatHistory.add(content("model") { text(text) })
+                
+                if (chatHistory.size > 20) {
+                    chatHistory.removeAt(0)
+                    chatHistory.removeAt(0)
                 }
+                
+                text
             } catch (e: Exception) {
-                Log.e(TAG, "Error getting insight: ${e.message}", e)
-                "حدث خطأ أثناء جلب التحليل: ${e.message}"
+                Log.e(TAG, "Error", e)
+                "خطأ: ${e.message}"
             }
         }
     }
-
-    suspend fun chat(message: String, sessionId: String): String {
-        return withContext(Dispatchers.IO) {
-            try {
-                "مرحباً! لقد استقبلت رسالتك: '$message'. أنا مساعد Gemini الذكي. كيف يمكنني مساعدتك؟"
-            } catch (e: Exception) {
-                Log.e(TAG, "Chat error: ${e.message}", e)
-                "عذراً، حدث خطأ في معالجة طلبك."
-            }
-        }
+    
+    fun sendMessageSync(message: String): String {
+        return "استخدم sendToAI للاستجابة الفورية"
     }
 }

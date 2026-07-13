@@ -23,6 +23,25 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import java.util.concurrent.TimeUnit
 
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * SMSService — النسخة المُحسَّنة (بدون NanoHTTPD)
+ * ═══════════════════════════════════════════════════════════════
+ *
+ * تم إزالة:
+ * - inner class ApiServer : NanoHTTPD(port)
+ * - جميع REST API endpoints (/api?action=...)
+ * - localhost:8080
+ * - serve() method
+ * - JSONObject/JSONArray parsing للـ API requests
+ *
+ * تم الاحتفاظ بـ:
+ * - SMS Handling (SmsReceiver)
+ * - Foreground Service
+ * - WorkManager (Backup)
+ * - Notification Channel
+ * - AI Integration (Gemini)
+ */
 class SMSService : Service() {
 
     companion object {
@@ -37,7 +56,7 @@ class SMSService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "SMSService onCreate")
+        Log.d(TAG, "SMSService onCreate — NanoHTTPD removed, pure SMS service")
         repository = AppModule.provideStationRepository(this)
         createNotificationChannel()
         scheduleBackup()
@@ -45,12 +64,19 @@ class SMSService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "SMSService onStartCommand")
+
         val notification = createForegroundNotification()
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
+
         return START_STICKY
     }
 
@@ -58,9 +84,13 @@ class SMSService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.d(TAG, "SMSService onDestroy")
         serviceScope.cancel()
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // Notification
+    // ═══════════════════════════════════════════════════════════
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -83,19 +113,24 @@ class SMSService : Service() {
             this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("محطة الوقود")
-            .setContentText("الخدمة الخلفية قيد التشغيل")
+            .setContentTitle("محطة أبو أحمد")
+            .setContentText("الخدمة تعمل في الخلفية")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // Backup Scheduling
+    // ═══════════════════════════════════════════════════════════
     private fun scheduleBackup() {
         val backupRequest = PeriodicWorkRequestBuilder<BackupWorker>(
             24, TimeUnit.HOURS
         ).build()
+
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             BACKUP_WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,

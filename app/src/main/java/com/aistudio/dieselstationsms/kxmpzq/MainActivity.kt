@@ -1,7 +1,6 @@
 package com.aistudio.dieselstationsms.kxmpzq
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -16,6 +15,7 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
@@ -30,6 +30,23 @@ import com.aistudio.dieselstationsms.kxmpzq.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * MainActivity — النسخة Native باستخدام Jetpack Compose
+ * ═══════════════════════════════════════════════════════════════
+ *
+ * تم إزالة:
+ * - WebView + web_interface.html
+ * - JavaScriptInterface
+ * - loadWebViewFromAssets()
+ * - serverReady flags
+ *
+ * تم إضافته:
+ * - Navigation Compose
+ * - ModalNavigationDrawer
+ * - BottomNavigationBar
+ * - Direct Repository Access
+ */
 class MainActivity : ComponentActivity() {
 
     companion object {
@@ -39,12 +56,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Start SMS Service (بدون NanoHTTPD)
         lifecycleScope.launch {
             delay(2000)
             startSMSService()
         }
+
         requestAllPermissions()
+
         enableEdgeToEdge()
+
         setContent {
             MyApplicationTheme {
                 StationApp()
@@ -57,8 +79,11 @@ class MainActivity : ComponentActivity() {
         val navController = rememberNavController()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
+
         val currentBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = currentBackStackEntry?.destination?.route ?: Screen.Dashboard.route
+
+        // Hide drawer & bottom nav on login screen
         val isLoginScreen = currentRoute == Screen.Login.route
 
         ModalNavigationDrawer(
@@ -99,7 +124,7 @@ class MainActivity : ComponentActivity() {
                     navController = navController,
                     modifier = Modifier.padding(innerPadding),
                     onLogout = {
-                        // تسجيل الخروج
+                        // Clear any session data if needed
                     }
                 )
             }
@@ -116,11 +141,11 @@ class MainActivity : ComponentActivity() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) {
             permissions.add(Manifest.permission.RECEIVE_SMS)
         }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
-            permissions.add(Manifest.permission.READ_SMS)
-        }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             permissions.add(Manifest.permission.SEND_SMS)
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.READ_SMS)
         }
         if (permissions.isNotEmpty()) {
             requestPermissions(permissions.toTypedArray(), PERMISSION_REQUEST_CODE)
@@ -129,7 +154,7 @@ class MainActivity : ComponentActivity() {
 
     private fun startSMSService() {
         try {
-            val intent = Intent(this, SMSService::class.java)
+            val intent = android.content.Intent(this, SMSService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(intent)
             } else {
