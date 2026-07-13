@@ -27,17 +27,11 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      # ═══════════════════════════════════════════════════════════
-      # 1. Checkout
-      # ═══════════════════════════════════════════════════════════
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # ═══════════════════════════════════════════════════════════
-      # 2. Setup JDK
-      # ═══════════════════════════════════════════════════════════
       - name: Setup JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:
@@ -45,17 +39,11 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      # ═══════════════════════════════════════════════════════════
-      # 3. Setup Gradle
-      # ═══════════════════════════════════════════════════════════
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: ${{ env.GRADLE_VERSION }}
 
-      # ═══════════════════════════════════════════════════════════
-      # 4. Cache Gradle
-      # ═══════════════════════════════════════════════════════════
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
         with:
@@ -67,29 +55,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # ═══════════════════════════════════════════════════════════
-      # 5. Make gradlew executable
-      # ═══════════════════════════════════════════════════════════
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # ═══════════════════════════════════════════════════════════
-      # 6. Run Lint
-      # ═══════════════════════════════════════════════════════════
       - name: Run Lint
         run: ./gradlew :app:lintDebug --no-daemon
         continue-on-error: true
 
-      # ═══════════════════════════════════════════════════════════
-      # 7. Run Unit Tests
-      # ═══════════════════════════════════════════════════════════
       - name: Run Unit Tests
         run: ./gradlew :app:testDebugUnitTest --no-daemon
         continue-on-error: true
 
-      # ═══════════════════════════════════════════════════════════
-      # 8. Build APK
-      # ═══════════════════════════════════════════════════════════
       - name: Build Debug APK
         if: github.event.inputs.build_type != 'release'
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
@@ -98,9 +74,6 @@ jobs:
         if: github.event.inputs.build_type == 'release'
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
-      # ═══════════════════════════════════════════════════════════
-      # 9. Sign Release APK (optional)
-      # ═══════════════════════════════════════════════════════════
       - name: Sign Release APK
         if: github.event.inputs.build_type == 'release'
         uses: r0adkll/sign-android-release@v1
@@ -111,9 +84,6 @@ jobs:
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
-      # ═══════════════════════════════════════════════════════════
-      # 10. Upload Debug APK
-      # ═══════════════════════════════════════════════════════════
       - name: Upload Debug APK
         if: github.event.inputs.build_type != 'release'
         uses: actions/upload-artifact@v4
@@ -122,9 +92,6 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
-      # ═══════════════════════════════════════════════════════════
-      # 11. Upload Release APK
-      # ═══════════════════════════════════════════════════════════
       - name: Upload Release APK
         if: github.event.inputs.build_type == 'release'
         uses: actions/upload-artifact@v4
@@ -133,9 +100,6 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           retention-days: 90
 
-      # ═══════════════════════════════════════════════════════════
-      # 12. Create GitHub Release (for release builds)
-      # ═══════════════════════════════════════════════════════════
       - name: Create Release
         if: github.event.inputs.build_type == 'release' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
@@ -145,10 +109,8 @@ jobs:
           name: Release v${{ github.run_number }}
           body: |
             ## Fuel Station App Release v${{ github.run_number }}
-
             ### Changes
             - Auto-generated release from GitHub Actions
-
             ### Download
             - APK attached below
           draft: false
