@@ -10,29 +10,6 @@ import infrastructure.persistence.converters.SyncConverters
 import infrastructure.persistence.converters.SyncStatus
 
 
-/**
- * PaymentEntity
- *
- * Persistence model for financial payments.
- *
- * Architectural Rules:
- *
- * ADR-007:
- * Database schema is source of truth.
- *
- * ADR-009:
- * Audit trail is mandatory.
- *
- * ADR-010:
- * Monetary values are stored only.
- * Domain layer handles calculations.
- *
- * ADR-011:
- * rowVersion supports optimistic locking.
- *
- * ADR-012:
- * Repository controls transactions.
- */
 @Entity(
     tableName = "payments",
 
@@ -87,13 +64,25 @@ import infrastructure.persistence.converters.SyncStatus
             onDelete = ForeignKey.SET_NULL
         ),
 
-
-        // Audit owner - NEVER DELETE USER
         ForeignKey(
             entity = UserEntity::class,
             parentColumns = ["id"],
             childColumns = ["created_by"],
             onDelete = ForeignKey.RESTRICT
+        ),
+
+        ForeignKey(
+            entity = UserEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["updated_by"],
+            onDelete = ForeignKey.SET_NULL
+        ),
+
+        ForeignKey(
+            entity = UserEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["deleted_by"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
 
@@ -111,19 +100,11 @@ import infrastructure.persistence.converters.SyncStatus
         ),
 
         Index(
-            value = ["sale_id"]
+            value = ["cash_box_id", "is_deleted"]
         ),
 
         Index(
             value = ["sale_id", "is_deleted"]
-        ),
-
-        Index(
-            value = ["cash_box_id"]
-        ),
-
-        Index(
-            value = ["cash_box_id", "is_deleted"]
         ),
 
         Index(
@@ -144,10 +125,10 @@ import infrastructure.persistence.converters.SyncStatus
 @TypeConverters(SyncConverters::class)
 data class PaymentEntity(
 
-    // ==========================
-    // Local Database Identity
-    // ==========================
-
+    /*
+     * Local SQLite identity only.
+     * Domain identity is UUID.
+     */
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = "id")
     val id: Long = 0,
@@ -156,10 +137,6 @@ data class PaymentEntity(
     @ColumnInfo(name = "uuid")
     override val uuid: String,
 
-
-    // ==========================
-    // Payment Data
-    // ==========================
 
     @ColumnInfo(name = "payment_code")
     val paymentCode: String,
@@ -197,61 +174,9 @@ data class PaymentEntity(
     val exchangeRate: Double = 1.0,
 
 
-    @ColumnInfo(name = "amount_in_default")
-    val amountInDefault: Double? = null,
-
-
-    @ColumnInfo(name = "is_partial")
-    val isPartial: Int = 0,
-
-
-    @ColumnInfo(name = "total_invoice_amount")
-    val totalInvoiceAmount: Double? = null,
-
-
-    @ColumnInfo(name = "remaining_after")
-    val remainingAfter: Double? = null,
-
-
-    // ==========================
-    // Payment Methods Details
-    // ==========================
-
-    @ColumnInfo(name = "cheque_number")
-    val chequeNumber: String? = null,
-
-
-    @ColumnInfo(name = "cheque_date")
-    val chequeDate: String? = null,
-
-
-    @ColumnInfo(name = "cheque_status")
-    val chequeStatus: String = "pending",
-
-
-    @ColumnInfo(name = "bank_account_id")
-    val bankAccountId: Long? = null,
-
-
-    @ColumnInfo(name = "transfer_reference")
-    val transferReference: String? = null,
-
-
-    @ColumnInfo(name = "card_last_four")
-    val cardLastFour: String? = null,
-
-
-    @ColumnInfo(name = "transaction_id")
-    val transactionId: String? = null,
-
-
     @ColumnInfo(name = "cash_box_id")
     val cashBoxId: Long? = null,
 
-
-    // ==========================
-    // Status
-    // ==========================
 
     @ColumnInfo(name = "status")
     val status: String = "completed",
@@ -269,17 +194,14 @@ data class PaymentEntity(
     val refundReason: String? = null,
 
 
-    @ColumnInfo(name = "operator")
-    val operator: String = "System",
-
-
     @ColumnInfo(name = "notes")
     val notes: String? = null,
 
 
-    // ==========================
-    // Audit Trail
-    // ==========================
+    // =========================
+    // Audit Contract
+    // =========================
+
 
     @ColumnInfo(name = "created_by")
     override val createdBy: Long,
@@ -309,9 +231,10 @@ data class PaymentEntity(
     override val isDeleted: Int = 0,
 
 
-    // ==========================
-    // Synchronization
-    // ==========================
+    // =========================
+    // Sync Contract
+    // =========================
+
 
     @ColumnInfo(name = "sync_status")
     override val syncStatus: SyncStatus = SyncStatus.SYNCED,
@@ -325,16 +248,12 @@ data class PaymentEntity(
     override val syncAt: String? = null,
 
 
-    @ColumnInfo(name = "device_id")
-    override val deviceId: String? = null,
-
-
-    // ==========================
-    // Optimistic Lock
-    // ==========================
-
     @ColumnInfo(name = "row_version")
     override val rowVersion: Int = 1,
+
+
+    @ColumnInfo(name = "device_id")
+    override val deviceId: String? = null,
 
 
     @ColumnInfo(name = "remarks")
@@ -343,7 +262,6 @@ data class PaymentEntity(
 
     @ColumnInfo(name = "extra_data")
     override val extraData: String? = null
-
 
 ) : BaseEntity(
 
@@ -364,9 +282,9 @@ data class PaymentEntity(
     syncVersion = syncVersion,
     syncAt = syncAt,
 
-    deviceId = deviceId,
-
     rowVersion = rowVersion,
+
+    deviceId = deviceId,
 
     remarks = remarks,
     extraData = extraData
