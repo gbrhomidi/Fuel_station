@@ -6,127 +6,82 @@ import infrastructure.persistence.model.SyncStatus
 /**
  * Base persistence contract.
  *
- * This class is NOT a Room Entity.
+ * Pure Kotlin abstraction.
  *
- * It only provides shared persistence fields.
+ * No Room dependency.
  *
- * ADR-007:
- * Database schema is the source of truth.
+ * Responsibilities:
  *
- * ADR-008:
- * UTC ISO-8601 timestamps.
- *
- * ADR-009:
- * Financial audit preservation.
- *
- * ADR-011:
- * Optimistic Offline Locking.
- *
- * ADR-012:
- * Repository isolates persistence details.
+ * - Audit fields contract
+ * - Soft delete contract
+ * - Synchronization contract
+ * - Optimistic locking contract
  */
 abstract class BaseEntity(
 
-    /**
-     * SQLite primary key.
-     */
-    open val id: Long,
+
+    // ==========================
+    // Identity
+    // ==========================
+
+    open val id: Long = 0,
+
+    open val uuid: String? = null,
 
 
-    /**
-     * Globally unique identifier.
-     *
-     * Required for:
-     * - Offline creation
-     * - Device synchronization
-     * - Conflict resolution
-     */
-    open val uuid: String,
+    // ==========================
+    // Audit Trail
+    // ==========================
+
+    open val createdBy: Long,
+
+    open val createdAt: String,
 
 
-    /**
-     * Creation audit.
-     */
-    open val createdAt: String?,
+    open val updatedBy: Long? = null,
 
-    open val createdBy: Long?,
+    open val updatedAt: String? = null,
 
 
-    /**
-     * Modification audit.
-     */
-    open val updatedAt: String?,
+    open val deletedBy: Long? = null,
 
-    open val updatedBy: Long?,
+    open val deletedAt: String? = null,
 
 
-    /**
-     * Soft delete audit.
-     */
-    open val deletedAt: String?,
+    // ==========================
+    // Soft Delete
+    // ==========================
 
-    open val deletedBy: Long?,
-
-
-    /**
-     * Soft delete flag.
-     *
-     * 0 = active
-     * 1 = deleted
-     */
-    open val isDeleted: Int,
+    open val isDeleted: Int = 0,
 
 
-    /**
-     * Synchronization state.
-     *
-     * Stored as INTEGER through SyncConverters.
-     */
-    open val syncStatus: SyncStatus,
+    // ==========================
+    // Synchronization
+    // ==========================
+
+    open val syncStatus: SyncStatus = SyncStatus.PENDING,
+
+    open val syncVersion: Int = 1,
+
+    open val syncAt: String? = null,
 
 
-    /**
-     * Synchronization revision.
-     */
-    open val syncVersion: Int,
+    open val deviceId: String? = null,
 
 
-    /**
-     * Last successful sync timestamp.
-     */
-    open val syncAt: String?,
+    // ==========================
+    // Optimistic Locking
+    // ==========================
+
+    open val rowVersion: Int = 1,
 
 
-    /**
-     * Device origin.
-     */
-    open val deviceId: String?,
+    // ==========================
+    // Metadata
+    // ==========================
 
+    open val remarks: String? = null,
 
-    /**
-     * Additional notes.
-     */
-    open val remarks: String?,
-
-
-    /**
-     * JSON extension field.
-     */
-    open val extraData: String?,
-
-
-    /**
-     * Optimistic Lock Version.
-     *
-     * Every successful update:
-     *
-     * row_version = row_version + 1
-     *
-     * Update condition:
-     *
-     * WHERE id = ?
-     * AND row_version = expectedVersion
-     */
-    open val rowVersion: Int = 1
+    open val extraData: String? = null
 
 )
