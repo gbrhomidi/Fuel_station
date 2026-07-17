@@ -1,4 +1,5 @@
 package infrastructure.persistence.entities
+import infrastructure.persistence.base.BaseEntity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

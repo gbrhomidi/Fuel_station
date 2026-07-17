@@ -1,4 +1,4 @@
-package infrastructure.persistence
+package infrastructure.persistence.database
 
 import android.content.Context
 import androidx.room.Database

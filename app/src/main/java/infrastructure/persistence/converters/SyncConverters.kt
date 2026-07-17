@@ -1,7 +1,7 @@
-package infrastructure.persistence.converter
+package infrastructure.persistence.converters
 
 import androidx.room.TypeConverter
-import infrastructure.persistence.model.SyncStatus
+import infrastructure.persistence.types.SyncStatus
 
 /**
  * Room converters.

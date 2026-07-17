@@ -6,7 +6,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import infrastructure.persistence.AppDatabase
+import infrastructure.persistence.database.AppDatabase
 import infrastructure.persistence.dao.RoleDao
 import infrastructure.persistence.entities.RoleEntity
 import javax.inject.Singleton

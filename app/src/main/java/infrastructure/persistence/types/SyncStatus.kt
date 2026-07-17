@@ -1,4 +1,4 @@
-package infrastructure.persistence.model
+package infrastructure.persistence.types
 
 /**
  * Synchronization state persisted in SQLite as INTEGER.

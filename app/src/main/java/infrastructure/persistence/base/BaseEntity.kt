@@ -1,4 +1,4 @@
-package infrastructure.persistence.entities
+package infrastructure.persistence.base
 
 import infrastructure.persistence.converters.SyncStatus
 
