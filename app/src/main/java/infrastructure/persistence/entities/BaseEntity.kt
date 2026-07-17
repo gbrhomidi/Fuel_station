@@ -1,38 +1,24 @@
 package infrastructure.persistence.entities
 
-import infrastructure.persistence.model.SyncStatus
+import infrastructure.persistence.converters.SyncStatus
 
 
 /**
- * Base persistence contract.
- *
- * Pure Kotlin abstraction.
+ * Pure Kotlin persistence contract.
  *
  * No Room dependency.
  *
- * Responsibilities:
+ * No database identity.
  *
- * - Audit fields contract
- * - Soft delete contract
- * - Synchronization contract
- * - Optimistic locking contract
+ * Local IDs belong to Entity only.
  */
 abstract class BaseEntity(
 
-
-    // ==========================
-    // Identity
-    // ==========================
-
-    open val id: Long = 0,
-
-    open val uuid: String? = null,
+    // Logical identity
+    open val uuid: String,
 
 
-    // ==========================
-    // Audit Trail
-    // ==========================
-
+    // Audit
     open val createdBy: Long,
 
     open val createdAt: String,
@@ -48,17 +34,11 @@ abstract class BaseEntity(
     open val deletedAt: String? = null,
 
 
-    // ==========================
-    // Soft Delete
-    // ==========================
-
+    // Soft delete
     open val isDeleted: Int = 0,
 
 
-    // ==========================
     // Synchronization
-    // ==========================
-
     open val syncStatus: SyncStatus = SyncStatus.PENDING,
 
     open val syncVersion: Int = 1,
@@ -69,19 +49,12 @@ abstract class BaseEntity(
     open val deviceId: String? = null,
 
 
-    // ==========================
-    // Optimistic Locking
-    // ==========================
-
+    // Optimistic locking
     open val rowVersion: Int = 1,
 
 
-    // ==========================
     // Metadata
-    // ==========================
-
     open val remarks: String? = null,
 
     open val extraData: String? = null
-
 )
