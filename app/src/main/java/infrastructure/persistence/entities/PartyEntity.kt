@@ -1,35 +1,23 @@
 package infrastructure.persistence.entities
 
-import androidx.room.ColumnInfo
-import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.PrimaryKey
+import androidx.room.*
 import infrastructure.persistence.base.BaseEntity
 import infrastructure.persistence.types.SyncStatus
 
 
 @Entity(
     tableName = "parties",
-
     indices = [
-        Index(
-            value = ["uuid"],
-            unique = true
-        ),
-
-        Index(
-            value = ["party_code"],
-            unique = true
-        ),
-
-        Index(
-            value = ["is_deleted"]
-        )
+        Index(value = ["uuid"], unique = true),
+        Index(value = ["party_code"], unique = true),
+        Index(value = ["party_type"]),
+        Index(value = ["is_deleted"])
     ]
 )
 data class PartyEntity(
 
     @PrimaryKey(autoGenerate = true)
+    @ColumnInfo(name = "id")
     val id: Long = 0,
 
 
@@ -41,10 +29,6 @@ data class PartyEntity(
     val partyCode: String,
 
 
-    @ColumnInfo(name = "party_type")
-    val partyType: String,
-
-
     @ColumnInfo(name = "name")
     val name: String,
 
@@ -53,8 +37,16 @@ data class PartyEntity(
     val phone: String? = null,
 
 
-    @ColumnInfo(name = "email")
-    val email: String? = null,
+    @ColumnInfo(name = "address")
+    val address: String? = null,
+
+
+    @ColumnInfo(name = "party_type")
+    val partyType: String = "CUSTOMER",
+
+
+    @ColumnInfo(name = "credit_limit")
+    val creditLimit: Double = 0.0,
 
 
     @ColumnInfo(name = "created_by")
@@ -65,8 +57,16 @@ data class PartyEntity(
     override val createdAt: String,
 
 
+    @ColumnInfo(name = "updated_by")
+    override val updatedBy: Long? = null,
+
+
     @ColumnInfo(name = "updated_at")
     override val updatedAt: String? = null,
+
+
+    @ColumnInfo(name = "deleted_by")
+    override val deletedBy: Long? = null,
 
 
     @ColumnInfo(name = "deleted_at")
@@ -104,28 +104,21 @@ data class PartyEntity(
     @ColumnInfo(name = "extra_data")
     override val extraData: String? = null
 
+): BaseEntity(
 
-) : BaseEntity(
-
-    uuid = uuid,
-
-    createdBy = createdBy,
-    createdAt = createdAt,
-
-    updatedAt = updatedAt,
-
-    deletedAt = deletedAt,
-
-    isDeleted = isDeleted,
-
-    syncStatus = syncStatus,
-    syncVersion = syncVersion,
-    syncAt = syncAt,
-
-    deviceId = deviceId,
-
-    rowVersion = rowVersion,
-
-    remarks = remarks,
-    extraData = extraData
+    uuid,
+    createdBy,
+    createdAt,
+    updatedBy,
+    updatedAt,
+    deletedBy,
+    deletedAt,
+    isDeleted,
+    syncStatus,
+    syncVersion,
+    syncAt,
+    deviceId,
+    rowVersion,
+    remarks,
+    extraData
 )
