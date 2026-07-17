@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("org.jetbrains.kotlin.kapt")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -26,7 +26,6 @@ android {
         release {
             isMinifyEnabled = false
             isShrinkResources = false
-            // تم إزالة proguard-android-optimize لتجنب التعارض أثناء تعطيل Minify
         }
         debug {
             isDebuggable = true
@@ -37,21 +36,17 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    
     kotlinOptions {
         jvmTarget = "17"
         freeCompilerArgs += listOf(
-            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-            "-opt-in=kotlin.RequiresOptIn"
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
         )
     }
     
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-    
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.15"
     }
     
     packaging {
@@ -71,7 +66,6 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     
-    // تم استبدال المكتبة الموسعة الضخمة بالنسخة الأساسية لتخفيف حجم الـ Dexing وحل مشكلة الذاكرة
     implementation("androidx.compose.material:material-icons-core")
     
     implementation(libs.androidx.navigation.compose)
@@ -90,7 +84,7 @@ dependencies {
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
-    kapt("androidx.room:room-compiler:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
 
     // Testing
     testImplementation(libs.junit)
@@ -102,8 +96,4 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-}
-
-kapt {
-    correctErrorTypes = true
 }
