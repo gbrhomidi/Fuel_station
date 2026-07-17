@@ -1,64 +1,109 @@
-name: Build APK
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    id("org.jetbrains.kotlin.kapt")
+}
 
-on:
-  push:
-    branches: [ "main", "master", "develop" ]
-  pull_request:
-    branches: [ "main", "master", "develop" ]
-  workflow_dispatch: # يتيح لك تشغيل البناء يدوياً من موقع GitHub في أي وقت
+android {
+    namespace = "com.aistudio.dieselstationsms.kxmpzq"
+    compileSdk = 35
 
-jobs:
-  build:
-    name: Build Android Debug APK
-    runs-on: ubuntu-latest
+    defaultConfig {
+        applicationId = "com.aistudio.dieselstationsms.kxmpzq"
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 1
+        versionName = "6.0-native"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        vectorDrawables {
+            useSupportLibrary = true
+        }
+    }
 
-    steps:
-      # 1. سحب الكود من المستودع
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            isShrinkResources = false
+            // تم إزالة proguard-android-optimize لتجنب التعارض أثناء تعطيل Minify
+        }
+        debug {
+            isDebuggable = true
+        }
+    }
+    
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+        freeCompilerArgs += listOf(
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+            "-opt-in=kotlin.RequiresOptIn"
+        )
+    }
+    
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+    
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.15"
+    }
+    
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
 
-      # 2. إعداد بيئة جافا (مشروعك يعتمد على JavaVersion.VERSION_17)
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin' # النسخة الأكثر استقراراً ودعماً لمشاريع أندرويد
+dependencies {
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    
+    // تم استبدال المكتبة الموسعة الضخمة بالنسخة الأساسية لتخفيف حجم الـ Dexing وحل مشكلة الذاكرة
+    implementation("androidx.compose.material:material-icons-core")
+    
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.biometric)
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.logging.interceptor)
 
-      # 3. إعداد أداة Gradle الرسمية للـ Caching الذكي لتسريع البناء اللاحق
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+    // Room Database
+    val roomVersion = "2.6.1"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion")
 
-      # 4. حقن إعدادات تقييد وتخصيص الذاكرة برمجياً قبل بدء البناء
-      - name: Configure Gradle Memory & Optimizations
-        run: |
-          # التأكد من وجود ملف gradle.properties أو إنشائه
-          touch gradle.properties
-          
-          # كتابة إعدادات تخصيص الذاكرة والسرعة
-          echo "org.gradle.jvmargs=-Xmx4096m -XX:+UseParallelGC -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" >> gradle.properties
-          echo "kotlin.daemon.jvmopts=-Xmx2048m" >> gradle.properties
-          echo "org.gradle.parallel=true" >> gradle.properties
-          echo "org.gradle.caching=true" >> gradle.properties
-          
-          # عرض الإعدادات المطبقة في الـ Console للتأكد
-          echo "=== Current Applied Gradle Properties ==="
-          cat gradle.properties
+    // Testing
+    testImplementation(libs.junit)
+    testImplementation(libs.androidx.junit)
+    testImplementation(libs.androidx.espresso.core)
+    testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation("org.robolectric:robolectric:4.11.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
+}
 
-      # 5. منح صلاحيات التشغيل لملف gradlew
-      - name: Grant Execute Permission to Gradlew
-        run: chmod +x gradlew
-
-      # 6. تشغيل عملية البناء الفعلية لتوليد الـ APK
-      - name: Build Debug APK
-        env:
-          # تأكيد إضافي عبر متغيرات البيئة لإجبار نظام الـ Java Virtual Machine على الالتزام بحد الـ 4G
-          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4096m -XX:+UseParallelGC"
-        run: ./gradlew assembleDebug --stacktrace
-
-      # 7. رفع ملف الـ APK الناتج كأثر (Artifact) لتتمكن من تحميله مباشرة من الصفحة
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Fuel-Station-Debug-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 7 # سيتم الاحتفاظ بالملف على GitHub لمدة 7 أيام للتنزيل
+kapt {
+    correctErrorTypes = true
+}
