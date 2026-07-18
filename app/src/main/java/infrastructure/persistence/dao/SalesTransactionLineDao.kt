@@ -1,10 +1,8 @@
 package infrastructure.persistence.dao
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
-import androidx.room.Update
+
+import androidx.room.*
+
 import infrastructure.persistence.entities.SalesTransactionLineEntity
 
 
@@ -13,7 +11,7 @@ interface SalesTransactionLineDao {
 
 
     @Insert(
-        onConflict = OnConflictStrategy.ABORT
+        onConflict = OnConflictStrategy.REPLACE
     )
     suspend fun insert(
         line: SalesTransactionLineEntity
@@ -22,7 +20,7 @@ interface SalesTransactionLineDao {
 
 
     @Insert(
-        onConflict = OnConflictStrategy.ABORT
+        onConflict = OnConflictStrategy.REPLACE
     )
     suspend fun insertAll(
         lines: List<SalesTransactionLineEntity>
@@ -37,17 +35,10 @@ interface SalesTransactionLineDao {
 
 
 
-    @Query(
-        """
-        SELECT *
-        FROM sales_transaction_lines
-        WHERE id = :id
-        AND is_deleted = 0
-        """
+    @Delete
+    suspend fun delete(
+        line: SalesTransactionLineEntity
     )
-    suspend fun findById(
-        id: Long
-    ): SalesTransactionLineEntity?
 
 
 
@@ -57,10 +48,9 @@ interface SalesTransactionLineDao {
         FROM sales_transaction_lines
         WHERE transaction_id = :transactionId
         AND is_deleted = 0
-        ORDER BY id ASC
         """
     )
-    suspend fun findByTransactionId(
+    suspend fun getByTransaction(
         transactionId: Long
     ): List<SalesTransactionLineEntity>
 
@@ -69,43 +59,17 @@ interface SalesTransactionLineDao {
     @Query(
         """
         UPDATE sales_transaction_lines
-        SET
-            is_deleted = 1,
-            deleted_at = datetime('now')
+        SET 
+        is_deleted = 1,
+        deleted_by = :userId,
+        updated_at = :time
         WHERE id = :id
-        AND is_deleted = 0
         """
     )
     suspend fun softDelete(
-        id: Long
-    ): Int
-
-
-
-    @Query(
-        """
-        UPDATE sales_transaction_lines
-        SET
-            is_deleted = 1,
-            deleted_at = datetime('now')
-        WHERE transaction_id = :transactionId
-        AND is_deleted = 0
-        """
-    )
-    suspend fun softDeleteByTransaction(
-        transactionId: Long
-    ): Int
-
-
-
-    @Query(
-        """
-        DELETE FROM sales_transaction_lines
-        WHERE transaction_id = :transactionId
-        """
-    )
-    suspend fun hardDeleteByTransaction(
-        transactionId: Long
+        id: Long,
+        userId: Long,
+        time: Long
     )
 
 }
