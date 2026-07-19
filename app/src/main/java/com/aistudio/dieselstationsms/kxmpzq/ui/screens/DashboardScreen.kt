@@ -22,7 +22,7 @@ import com.aistudio.dieselstationsms.kxmpzq.ui.viewmodel.DashboardViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(
+fun DashboardRoute(
     viewModel: DashboardViewModel,
     onNavigate: (Screen) -> Unit,
     modifier: Modifier = Modifier
@@ -334,5 +334,78 @@ private fun AlertsCard(data: DashboardData, modifier: Modifier = Modifier) {
                 )
             }
         }
+    }
+}
+// ======================================================
+// UI PREVIEW ONLY
+// لا يستخدم قاعدة البيانات
+// لا يستخدم ViewModel
+// لا يستخدم Repository
+// ======================================================
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true
+)
+@Composable
+fun DashboardScreenPreview() {
+
+
+    val fakeDashboardData = DashboardData(
+
+        todayRevenue = 12500.0,
+
+        totalTransactions = 35,
+
+        totalCustomers = 120,
+
+        totalFuelDispensed = 8500.0,
+
+        activeShifts = 2,
+
+        monthlyRevenue = 250000.0,
+
+        lowStockItems = 3,
+
+        pendingMaintenance = 1
+    )
+
+
+    MaterialTheme {
+
+
+        DashboardContent(
+
+            data = fakeDashboardData,
+
+
+            dailySalesState =
+                UiState.Success(
+                    listOf(
+                        com.aistudio.dieselstationsms.kxmpzq.data.model.DailySales(
+                            date = "2026-07-01",
+                            totalAmount = 5000.0
+                        ),
+
+                        com.aistudio.dieselstationsms.kxmpzq.data.model.DailySales(
+                            date = "2026-07-02",
+                            totalAmount = 7000.0
+                        ),
+
+                        com.aistudio.dieselstationsms.kxmpzq.data.model.DailySales(
+                            date = "2026-07-03",
+                            totalAmount = 9000.0
+                        )
+                    )
+                ),
+
+
+            onNavigate = {},
+
+
+            modifier = Modifier.fillMaxSize()
+
+        )
+
     }
 }
