@@ -1,27 +1,37 @@
 package infrastructure.persistence.types
 
 /**
- * Financial amount stored as minor units (smallest currency unit).
- * 
- * Example: 100.50 SAR = 10050 minor units
- * 
- * ADR-012: Financial Precision Contract
- * - Never use floating point (REAL) for monetary values
- * - Always store in smallest unit (Integer/Long)
- * - Currency conversion handled at application layer
+ * Financial amount stored as minor units.
+ *
+ * Example:
+ * 100.50 SAR = 10050 minor units
+ *
+ * ADR-012:
+ * - Never use floating point for monetary values.
+ * - Store smallest currency unit.
+ * - Currency conversion belongs to application layer.
  */
 data class Money(
     val amountMinor: Long,
     val currencyCode: String
 ) {
+
     companion object {
-        fun fromMajor(amount: Double, currencyCode: String): Money {
+
+        fun fromMajor(
+            amount: Double,
+            currencyCode: String
+        ): Money {
+
             return Money(
                 amountMinor = (amount * 100).toLong(),
                 currencyCode = currencyCode
             )
         }
     }
-    
-    fun toMajor(): Double = amountMinor / 100.0
+
+
+    fun toMajor(): Double {
+        return amountMinor / 100.0
+    }
 }
