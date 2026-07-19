@@ -22,7 +22,7 @@ import com.aistudio.dieselstationsms.kxmpzq.ui.viewmodel.DashboardViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardRoute(
+fun DashboardScreen(
     viewModel: DashboardViewModel,
     onNavigate: (Screen) -> Unit,
     modifier: Modifier = Modifier
