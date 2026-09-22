@@ -2492,7 +2492,72 @@
       font-size: 1.4rem !important;
       font-weight: bold;
     }
-  </style>
+  
+    .invoice-preview-modal { align-items: flex-start; padding: 12px; overflow-y: auto; }
+    .invoice-preview-shell { width: 100%; max-width: 720px; background: #eef2f5; }
+    .invoice-preview-content { display: flex; justify-content: center; padding: 4px; overflow-x: auto; }
+    .invoice-preview-actions { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+    .invoice-paper {
+      width: 100%; max-width: 624px; min-height: 820px; box-sizing: border-box;
+      background: #fff; color: #111; padding: 24px 26px 18px; direction: rtl;
+      font-family: Arial, Tahoma, sans-serif; box-shadow: 0 8px 30px rgba(0,0,0,.16);
+    }
+    .invoice-head {
+      background: #193a60; color: #fff; border-radius: 14px; padding: 10px 12px;
+      display: grid; grid-template-columns: 1fr 1.35fr 1fr; gap: 10px; align-items: center;
+    }
+    .invoice-meta { font-size: 12px; line-height: 2; text-align: right; direction: rtl; }
+    .invoice-meta .meta-line { white-space: nowrap; border-bottom: 1px dotted rgba(255,255,255,.85); }
+    .invoice-title-box { text-align: center; }
+    .invoice-title-box h1 {
+      margin: 0 auto 8px; background: #fff; color: #193a60; border-radius: 24px;
+      padding: 7px 12px; font-size: 22px; font-weight: 800; display: inline-block;
+    }
+    .invoice-payment { font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .invoice-logo {
+      width: 74px; height: 74px; border: 4px solid #193a60; border-radius: 50%;
+      background: #fff; display: flex; align-items: center; justify-content: center;
+      overflow: hidden; margin-right: auto;
+    }
+    .invoice-logo img { width: 100%; height: 100%; object-fit: contain; }
+    .invoice-logo-fallback { color: #193a60; font-weight: 900; font-size: 18px; }
+    .invoice-company { text-align: center; color: #193a60; font-weight: 800; font-size: 12px; margin: 7px 0 10px; }
+    .invoice-request {
+      border: 2px solid #193a60; border-radius: 9px; padding: 7px 10px; margin-bottom: 14px;
+      font-size: 13px; font-weight: 700; text-align: right;
+    }
+    .invoice-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 12px; }
+    .invoice-table th { background: #193a60; color: #fff; padding: 7px 4px; font-weight: 800; border-left: 1px solid #fff; }
+    .invoice-table th:first-child { border-radius: 11px 0 0 11px; }
+    .invoice-table th:last-child { border-radius: 0 11px 11px 0; border-left: none; }
+    .invoice-table td {
+      border-bottom: 1px dotted #6e6e6e; border-left: 1px solid #222; padding: 5px 4px;
+      text-align: center; height: 24px; vertical-align: middle; overflow: hidden; word-break: break-word;
+    }
+    .invoice-table td:last-child { border-left: none; }
+    .invoice-table .details { text-align: right; padding-right: 8px; }
+    .invoice-total {
+      width: 52%; margin: 7px 0 0 auto; display: grid; grid-template-columns: 1fr 1.25fr;
+      border: 2px solid #193a60; border-radius: 11px; overflow: hidden;
+    }
+    .invoice-total .label { background: #193a60; color: #fff; padding: 8px; font-weight: 800; text-align: center; }
+    .invoice-total .value { padding: 8px; font-weight: 900; text-align: center; background: #fff; }
+    .invoice-signatures {
+      margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+      font-size: 12px; font-weight: 700;
+    }
+    .invoice-signature-line { border-bottom: 1px dotted #333; min-height: 24px; margin-top: 5px; }
+    .invoice-footer {
+      margin-top: 16px; text-align: center; font-size: 11px; font-weight: 700;
+      border-top: 1px solid #193a60; padding-top: 7px;
+    }
+    @media print {
+      body * { visibility: hidden !important; }
+      #invoicePrintRoot, #invoicePrintRoot * { visibility: visible !important; }
+      #invoicePrintRoot { position: absolute; left: 0; top: 0; width: 100%; }
+    }
+
+</style>
 </head>
 <body>
 <!-- شريط المعلومات العلوي -->
@@ -2791,6 +2856,18 @@
     </div>
   </div>
 
+  <!-- معاينة فاتورة المبيعات المرتبطة فعلياً بقاعدة SQLite -->
+  <div id="invoicePreviewModal" class="modal invoice-preview-modal">
+    <div class="modal-content invoice-preview-shell">
+      <div class="modal-title">معاينة فاتورة المبيعات</div>
+      <div id="invoicePreviewContent" class="invoice-preview-content"></div>
+      <div class="invoice-preview-actions">
+        <button class="modal-btn modal-btn-primary" id="invoicePrintBtn"><i class="fas fa-print"></i> طباعة الفاتورة</button>
+        <button class="modal-btn modal-btn-cancel" onclick="closeModal('invoicePreviewModal')">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
   <!-- نموذج استرجاع الفواتير -->
   <div id="invoiceRetrieveModal" class="modal">
     <div class="modal-content" style="width: 100%; max-width: 1200px;">
@@ -2964,6 +3041,8 @@
                 case 'addSmsMessage': result = bridge.addSmsMessage(JSON.stringify(p)); break;
                 case 'addWhitelist': result = bridge.addWhitelist(JSON.stringify(p)); break;
                 case 'completeSale': result = bridge.completeSale(JSON.stringify(p)); break;
+                case 'searchInvoices': result = bridge.searchInvoices(p.startDate ?? p.start_date ?? null, p.endDate ?? p.end_date ?? null); break;
+                case 'getSaleInvoice': result = bridge.getSaleInvoice(String(p.identifier ?? p.saleId ?? p.sale_id ?? p.invoiceNumber ?? p.invoice_number ?? '')); break;
                 case 'deleteParty': result = bridge.deleteParty(Number(p.id ?? p.partyId ?? p.party_id)); break;
                 case 'deleteProduct': result = bridge.deleteProduct(Number(p.id ?? p.productId ?? p.product_id)); break;
                 case 'deleteUser': result = bridge.deleteUser(Number(p.id ?? p.userId ?? p.user_id)); break;
@@ -3440,31 +3519,26 @@ function resetForm() {
 
 function completeSale() {
     const total = parseFloat(document.getElementById('totalAmount').value) || 0;
-    const paid = parseFloat(document.getElementById('amountPaid').value) || 0;
-
-    if (!paid) { showToast('يرجى إدخال المبلغ المدفوع', 'error'); return; }
-    if (paid < total) { showToast('المبلغ المدفوع أقل من الإجمالي النهائي', 'error'); return; }
-
     const paymentType = document.getElementById('paymentType').value;
-    let entityId = null;
-    let entityTypeId = null;
-
-    if (paymentType === 'آجل') {
-        entityId = document.getElementById('deferredCustomerId').value;
-        entityTypeId = document.getElementById('deferredEntityTypeSelect').value;
-        if (!entityId || !entityTypeId) {
-            showToast('يرجى اختيار العميل ونوع الكيان', 'error');
-            return;
-        }
-        // التحقق من الحد الائتماني سيتم في الجسر (DatabaseHelper)
+    const paidInput = parseFloat(document.getElementById('amountPaid').value);
+    const paid = Number.isFinite(paidInput) ? paidInput : 0;
+    if (total <= 0) { showToast('لا يمكن ترحيل فاتورة بإجمالي صفر', 'error'); return; }
+    if (paymentType !== 'آجل' && paid < total) {
+        showToast('المبلغ المدفوع أقل من الإجمالي النهائي', 'error'); return;
     }
-
+    let entityId = null, entityTypeId = null;
+    if (paymentType === 'آجل') {
+        entityId = document.getElementById('deferredCustomerId').value || document.getElementById('customerId').value;
+        entityTypeId = document.getElementById('deferredEntityTypeSelect').value || document.getElementById('entityTypeSelect').value;
+        if (!entityId || !entityTypeId) {
+            showToast('يرجى اختيار العميل ونوع الكيان للبيع الآجل', 'error'); return;
+        }
+    }
     const products = Array.from(document.querySelectorAll('#productsTableBody tr')).map(row => ({
         product_id: row.getAttribute('data-product-id'),
-        quantity: parseInt(row.querySelector('.quantity-input').value),
-        unit_price: parseFloat(row.querySelector('td:nth-child(3)').textContent)
-    }));
-
+        quantity: parseFloat(row.querySelector('.quantity-input').value) || 0,
+        unit_price: parseFloat(row.querySelector('td:nth-child(3)').textContent) || 0
+    })).filter(item => item.product_id && item.quantity > 0);
     if (products.length === 0) { showToast('يرجى إضافة منتجات قبل الترحيل', 'error'); return; }
 
     const invoiceData = {
@@ -3473,7 +3547,7 @@ function completeSale() {
         entity_id: entityId,
         entity_type_id: entityTypeId,
         products: products,
-        amount_paid: paid
+        amount_paid: paymentType === 'آجل' ? 0 : total
     };
 
     showLoading(true);
@@ -3481,35 +3555,29 @@ function completeSale() {
         .then(data => {
             if (data.success) {
                 showSuccessCheckmark();
-                localStorage.setItem('lastSaleId', data.sale_id);
-                localStorage.setItem('lastInvoiceNumber', data.invoice_number);
+                localStorage.setItem('lastSaleId', String(data.sale_id));
+                localStorage.setItem('lastInvoiceNumber', data.invoice_number || '');
                 resetForm();
-            } else {
-                showToast(data.message || 'حدث خطأ أثناء الترحيل', 'error');
+                return showInvoicePreview(data.sale_id);
             }
+            showToast(data.message || data.error || 'حدث خطأ أثناء الترحيل', 'error');
         })
-        .catch(error => {
-            showToast('حدث خطأ أثناء الترحيل', 'error');
-        })
+        .catch(error => showToast(error?.error || 'حدث خطأ أثناء الترحيل', 'error'))
         .finally(() => showLoading(false));
 }
 
 function printReceipt() {
+    const saleId = localStorage.getItem('lastSaleId');
     const invoiceNumber = localStorage.getItem('lastInvoiceNumber');
-    if (!invoiceNumber) { showToast('لا توجد فاتورة للطباعة', 'error'); return; }
+    const identifier = saleId || invoiceNumber;
+    if (!identifier) { showToast('لا توجد فاتورة للطباعة', 'error'); return; }
     showLoading(true);
-    apiCall('printReceipt', { invoice_number: invoiceNumber })
+    apiCall('getSaleInvoice', { identifier })
         .then(data => {
-            if (data.success && data.html) {
-                const printWindow = window.open('', '_blank');
-                printWindow.document.write(data.html);
-                printWindow.document.close();
-                setTimeout(() => { printWindow.print(); }, 500);
-            } else {
-                showToast(data.message || 'فشل الطباعة', 'error');
-            }
+            if (data.success && data.data) return printInvoiceDocument(data.data);
+            throw new Error(data.error || data.message || 'تعذر تحميل بيانات الفاتورة');
         })
-        .catch(error => { showToast('حدث خطأ أثناء الطباعة', 'error'); })
+        .catch(error => showToast(error?.message || error?.error || 'فشل الطباعة', 'error'))
         .finally(() => showLoading(false));
 }
 
@@ -3817,6 +3885,7 @@ function retrieveInvoice() {
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
     flatpickr("#startDate", { locale: "ar", dateFormat: "Y-m-d", defaultDate: weekAgo });
     flatpickr("#endDate", { locale: "ar", dateFormat: "Y-m-d", defaultDate: today });
+    searchInvoices();
 }
 
 function searchInvoices() {
@@ -3824,55 +3893,50 @@ function searchInvoices() {
     const endDate = document.getElementById('endDate').value;
     if (!startDate || !endDate) { showToast('يرجى اختيار نطاق التواريخ', 'error'); return; }
     showLoading(true);
-    apiCall('searchInvoices', { start_date: startDate, end_date: endDate })
+    apiCall('searchInvoices', { startDate, endDate })
         .then(data => {
             const tbody = document.getElementById('invoiceResultsBody');
             tbody.innerHTML = '';
-            if (data.success && data.invoices) {
-                data.invoices.slice(0, 7).forEach(invoice => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${invoice.invoice_number}</td>
-                        <td>${invoice.username}</td>
-                        <td>${invoice.customer_name || '-'}</td>
-                        <td>${invoice.payment_type}</td>
-                        <td>${invoice.total_amount}</td>
-                        <td>${invoice.amount_paid}</td>
-                        <td>${invoice.sale_date}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="loadInvoice('${invoice.invoice_number}')">
-                                <i class="fas fa-download"></i> تحميل
-                            </button>
-                        </td>
-                    `;
-                    tr.addEventListener('click', () => {
-                        document.querySelectorAll('#invoiceResultsBody tr').forEach(r => r.classList.remove('selected-row'));
-                        tr.classList.add('selected-row');
-                    });
-                    tr.addEventListener('dblclick', () => { loadInvoice(invoice.invoice_number); });
-                    tbody.appendChild(tr);
-                });
-            } else {
-                tbody.innerHTML = '<tr><td colspan="8">لا توجد فواتير</td></tr>';
+            const invoices = Array.isArray(data.data) ? data.data : [];
+            if (!data.success || invoices.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8">لا توجد فواتير فعلية ضمن النطاق المحدد</td></tr>';
+                return;
             }
+            invoices.forEach(invoice => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = \`
+                    <td>\${escapeHtml(invoice.invoice_number || '')}</td>
+                    <td>\${escapeHtml(invoice.cashier_name || '')}</td>
+                    <td>\${escapeHtml(invoice.customer_name || 'عميل نقدي')}</td>
+                    <td>\${escapeHtml(invoice.payment_type || '')}</td>
+                    <td>\${formatInvoiceNumber(invoice.total_amount)}</td>
+                    <td>\${formatInvoiceNumber(invoice.amount_paid)}</td>
+                    <td>\${escapeHtml(invoice.sale_date || '')}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="loadInvoice('\${String(invoice.sale_id).replace(/'/g, "\\'")}')"><i class="fas fa-eye"></i> عرض</button>
+                        <button class="btn btn-sm btn-secondary" onclick="printInvoiceById('\${String(invoice.sale_id).replace(/'/g, "\\'")}')"><i class="fas fa-print"></i> طباعة</button>
+                    </td>
+                \`;
+                tbody.appendChild(tr);
+            });
         })
-        .catch(error => { showToast('حدث خطأ في البحث عن الفواتير', 'error'); })
+        .catch(error => showToast(error?.error || 'حدث خطأ في البحث عن الفواتير', 'error'))
         .finally(() => showLoading(false));
 }
 
-function loadInvoice(invoiceNumber) {
+function loadInvoice(identifier) {
     showLoading(true);
-    apiCall('retrieveInvoice', { invoice_number: invoiceNumber })
+    apiCall('getSaleInvoice', { identifier: String(identifier) })
         .then(data => {
-            if (data.success) {
-                loadInvoiceData(data);
+            if (data.success && data.data) {
                 closeModal('invoiceRetrieveModal');
-                showToast('تم تحميل الفاتورة بنجاح', 'success');
+                renderInvoicePreview(data.data);
+                document.getElementById('invoicePreviewModal').style.display = 'flex';
             } else {
-                showToast(data.message || 'حدث خطأ في تحميل الفاتورة', 'error');
+                throw new Error(data.error || data.message || 'الفاتورة غير موجودة');
             }
         })
-        .catch(error => { showToast('حدث خطأ في تحميل الفاتورة', 'error'); })
+        .catch(error => showToast(error?.message || error?.error || 'حدث خطأ في تحميل الفاتورة', 'error'))
         .finally(() => showLoading(false));
 }
 
@@ -3909,6 +3973,112 @@ function loadInvoiceData(data) {
     updateInvoiceSummary();
 }
 
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+function formatInvoiceNumber(value) {
+    const n = Number(value || 0);
+    return Number.isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
+}
+function invoiceLogoSrc(path) {
+    if (!path) return '';
+    const raw = String(path);
+    if (raw.startsWith('content://') || raw.startsWith('file://') || raw.startsWith('data:')) return raw;
+    if (raw.startsWith('/')) return 'file://' + raw;
+    return raw;
+}
+function buildInvoiceMarkup(invoice, rootId = 'invoicePrintRoot') {
+    const items = Array.isArray(invoice.items) ? invoice.items : [];
+    const currency = invoice.currency_symbol || 'ر.ي';
+    const payment = invoice.payment_type || 'نقداً';
+    const logo = invoiceLogoSrc(invoice.logo_path);
+    const company = invoice.company_name || invoice.station_name || 'محطة أبو أحمد لمشتقات الديزل';
+    const customer = invoice.customer_name || 'عميل نقدي';
+    const cashier = invoice.cashier_name || 'غير محدد';
+    const date = invoice.created_at || '';
+    const logoHtml = logo ? \`<img src="\${escapeHtml(logo)}" alt="شعار">\` : '<span class="invoice-logo-fallback">⛽</span>';
+    const rows = items.length ? items.map(item => \`
+        <tr>
+            <td class="details">\${escapeHtml(item.name || 'بند بيع')}</td>
+            <td>\${formatInvoiceNumber(item.quantity)}</td>
+            <td>\${formatInvoiceNumber(item.unit_price)}</td>
+            <td>\${formatInvoiceNumber(item.line_total)} \${escapeHtml(currency)}</td>
+        </tr>\`).join('') : '<tr><td class="details">لا توجد بنود مسجلة</td><td>0.00</td><td>0.00</td><td>0.00</td></tr>';
+    return \`
+      <div id="\${rootId}" class="invoice-paper">
+        <div class="invoice-head">
+          <div class="invoice-meta">
+            <div class="meta-line"><strong>التاريخ:</strong> \${escapeHtml(date)}</div>
+            <div class="meta-line"><strong>NO:</strong> \${escapeHtml(invoice.invoice_number || '')}</div>
+          </div>
+          <div class="invoice-title-box">
+            <h1>فاتورة بيع</h1>
+            <div class="invoice-payment">\${payment === 'نقداً' ? '☑ نقداً' : '□ نقداً'} &nbsp;&nbsp; \${payment === 'آجل' ? '☑ آجل' : '□ آجل'}</div>
+          </div>
+          <div class="invoice-logo">\${logoHtml}</div>
+        </div>
+        <div class="invoice-company">\${escapeHtml(company)}</div>
+        <div class="invoice-request">مطلوب من الأخ/الأخت: <span>\${escapeHtml(customer)}</span>\${invoice.customer_phone ? \` — \${escapeHtml(invoice.customer_phone)}\` : ''}</div>
+        <table class="invoice-table">
+          <thead><tr>
+            <th style="width:42%">التفاصيل<br><small>Description</small></th>
+            <th style="width:14%">العدد<br><small>Qty</small></th>
+            <th style="width:21%">سعر الوحدة<br><small>Unit Price</small></th>
+            <th style="width:23%">القيمة الإجمالية<br><small>Total Amount</small></th>
+          </tr></thead>
+          <tbody>\${rows}</tbody>
+        </table>
+        <div class="invoice-total">
+          <div class="label">الإجمالي<br><small>TOTAL</small></div>
+          <div class="value">\${formatInvoiceNumber(invoice.net_amount)} \${escapeHtml(currency)}</div>
+        </div>
+        <div class="invoice-signatures">
+          <div><div>اسم المستلم:</div><div class="invoice-signature-line">\${escapeHtml(customer)}</div></div>
+          <div><div>التوقيع:</div><div class="invoice-signature-line"></div></div>
+          <div><div>المبيعات:</div><div class="invoice-signature-line">\${escapeHtml(cashier)}</div></div>
+        </div>
+        <div class="invoice-footer">استلمت البضاعة الموضحة أعلاه كاملة وسليمة</div>
+      </div>\`;
+}
+function renderInvoicePreview(invoice) {
+    const container = document.getElementById('invoicePreviewContent');
+    if (!container) return;
+    container.innerHTML = buildInvoiceMarkup(invoice);
+    const printBtn = document.getElementById('invoicePrintBtn');
+    if (printBtn) printBtn.onclick = () => printInvoiceDocument(invoice);
+}
+function showInvoicePreview(identifier) {
+    return apiCall('getSaleInvoice', { identifier: String(identifier) }).then(data => {
+        if (!data.success || !data.data) throw new Error(data.error || data.message || 'تعذر تحميل بيانات الفاتورة');
+        renderInvoicePreview(data.data);
+        document.getElementById('invoicePreviewModal').style.display = 'flex';
+        return data.data;
+    });
+}
+function printInvoiceById(identifier) {
+    showLoading(true);
+    apiCall('getSaleInvoice', { identifier: String(identifier) }).then(data => {
+        if (data.success && data.data) return printInvoiceDocument(data.data);
+        throw new Error(data.error || data.message || 'تعذر تحميل الفاتورة');
+    }).catch(error => showToast(error?.message || error?.error || 'فشل طباعة الفاتورة', 'error')).finally(() => showLoading(false));
+}
+function printInvoiceDocument(invoice) {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { showToast('تعذر فتح نافذة الطباعة داخل WebView', 'error'); return; }
+    const markup = buildInvoiceMarkup(invoice, 'invoicePrintRoot');
+    const printCss = document.querySelector('style')?.textContent || '';
+    printWindow.document.open();
+    printWindow.document.write(\`
+      <!doctype html><html lang="ar" dir="rtl"><head>
+      <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>فاتورة \${escapeHtml(invoice.invoice_number || '')}</title>
+      <style>\${printCss}@page { size: A4 portrait; margin: 8mm; } html,body{margin:0;padding:0;background:#fff;}
+      .invoice-paper{margin:0 auto;box-shadow:none;max-width:none;width:100%;}</style>
+      </head><body>\${markup}</body></html>\`);
+    printWindow.document.close();
+    setTimeout(() => { printWindow.focus(); printWindow.print(); }, 350);
+}
 function toggleSalesReport() {
     const reportModal = document.getElementById('salesReportModal');
     if (reportModal.style.display === 'flex') {
@@ -4090,6 +4260,7 @@ function confirmDeferredCustomer() {
 // 14. التهيئة الأولية
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+    apiCall('getCurrentUser', {}).catch(() => null);
     loadThemeSettings();
     generateInvoiceNumber();
     loadEntityTypes();
