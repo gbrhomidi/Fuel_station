@@ -6810,6 +6810,216 @@ class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(co
         }
     }
 
+
+    fun searchInvoices(
+        stationId: Int = 1,
+        startDate: String? = null,
+        endDate: String? = null,
+        limit: Int = 500
+    ): JSONArray {
+        dbLock.lock()
+        return try {
+            val arr = JSONArray()
+            val db = readableDatabase
+            val start = startDate?.takeIf { it.isNotBlank() } ?: getCurrentDate()
+            val end = endDate?.takeIf { it.isNotBlank() } ?: start
+            db.rawQuery(
+                """
+                SELECT s.id, s.invoice_number, s.created_at, s.net_amount,
+                       s.paid_amount, s.remaining_amount, s.payment_method, s.is_credit,
+                       p.commercial_name_ar AS customer_name, p.commercial_name AS customer_name_en,
+                       u.full_name_ar AS cashier_name, u.full_name AS cashier_name_en
+                FROM sales_transactions s
+                LEFT JOIN parties p ON s.customer_party_id = p.id
+                LEFT JOIN users u ON s.cashier_id = u.id
+                WHERE s.station_id = ? AND s.is_deleted = 0
+                  AND date(s.created_at) BETWEEN ? AND ?
+                ORDER BY s.created_at DESC, s.id DESC
+                LIMIT ?
+                """.trimIndent(),
+                arrayOf(stationId.toString(), start, end, limit.coerceIn(1, 5000).toString())
+            ).use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow("id")
+                val invoiceIndex = cursor.getColumnIndexOrThrow("invoice_number")
+                val createdIndex = cursor.getColumnIndexOrThrow("created_at")
+                val netIndex = cursor.getColumnIndexOrThrow("net_amount")
+                val paidIndex = cursor.getColumnIndexOrThrow("paid_amount")
+                val remainingIndex = cursor.getColumnIndexOrThrow("remaining_amount")
+                val methodIndex = cursor.getColumnIndexOrThrow("payment_method")
+                val creditIndex = cursor.getColumnIndexOrThrow("is_credit")
+                val customerArIndex = cursor.getColumnIndexOrThrow("customer_name")
+                val customerEnIndex = cursor.getColumnIndexOrThrow("customer_name_en")
+                val cashierArIndex = cursor.getColumnIndexOrThrow("cashier_name")
+                val cashierEnIndex = cursor.getColumnIndexOrThrow("cashier_name_en")
+                while (cursor.moveToNext()) {
+                    val customer = cursor.getString(customerArIndex)
+                        ?: cursor.getString(customerEnIndex) ?: "عميل نقدي"
+                    val cashier = cursor.getString(cashierArIndex)
+                        ?: cursor.getString(cashierEnIndex) ?: "غير محدد"
+                    val isCredit = cursor.getInt(creditIndex) == 1
+                    arr.put(JSONObject().apply {
+                        put("sale_id", cursor.getLong(idIndex))
+                        put("invoice_number", cursor.getString(invoiceIndex) ?: "")
+                        put("sale_date", cursor.getString(createdIndex) ?: "")
+                        put("customer_name", customer)
+                        put("cashier_name", cashier)
+                        put("payment_type", if (isCredit) "آجل" else "نقداً")
+                        put("payment_method", cursor.getString(methodIndex) ?: "")
+                        put("total_amount", cursor.getDouble(netIndex))
+                        put("amount_paid", cursor.getDouble(paidIndex))
+                        put("remaining_amount", cursor.getDouble(remainingIndex))
+                    })
+                }
+            }
+            arr
+        } finally {
+            dbLock.unlock()
+        }
+    }
+
+    fun getSaleInvoice(identifier: String, stationId: Int = 1): JSONObject {
+        dbLock.lock()
+        try {
+            val db = readableDatabase
+            val numericId = identifier.toLongOrNull()
+            val identifierSelection = if (numericId != null) "s.id = ?" else "s.invoice_number = ?"
+            val identifierValue = if (numericId != null) numericId.toString() else identifier.trim()
+            return db.rawQuery(
+                """
+                SELECT s.*,
+                       p.commercial_name_ar AS customer_name_ar, p.commercial_name AS customer_name_en,
+                       p.phone AS customer_phone, p.address AS customer_address,
+                       u.full_name_ar AS cashier_name_ar, u.full_name AS cashier_name_en,
+                       st.station_name_ar, st.station_name, st.phone AS station_phone,
+                       st.city AS station_city, st.district AS station_district, st.street AS station_street,
+                       c.company_name_ar, c.company_name, c.trade_name, c.logo_path,
+                       cur.symbol AS currency_symbol
+                FROM sales_transactions s
+                LEFT JOIN parties p ON s.customer_party_id = p.id
+                LEFT JOIN users u ON s.cashier_id = u.id
+                LEFT JOIN stations st ON s.station_id = st.id
+                LEFT JOIN companies c ON st.company_id = c.id
+                LEFT JOIN currencies cur ON s.currency_id = cur.id
+                WHERE s.station_id = ? AND s.is_deleted = 0
+                  AND (" + identifierSelection + ")
+                LIMIT 1
+                """.trimIndent(),
+                arrayOf(stationId.toString(), identifierValue)
+            ).use { cursor ->
+                if (!cursor.moveToFirst()) throw IllegalArgumentException("الفاتورة غير موجودة")
+                val saleId = cursor.getLong(cursor.getColumnIndexOrThrow("id"))
+                val isCredit = cursor.getInt(cursor.getColumnIndexOrThrow("is_credit")) == 1
+                val customerName = cursor.getString(cursor.getColumnIndexOrThrow("customer_name_ar"))
+                    ?: cursor.getString(cursor.getColumnIndexOrThrow("customer_name_en")) ?: "عميل نقدي"
+                val cashierName = cursor.getString(cursor.getColumnIndexOrThrow("cashier_name_ar"))
+                    ?: cursor.getString(cursor.getColumnIndexOrThrow("cashier_name_en")) ?: "غير محدد"
+                val invoice = JSONObject().apply {
+                    put("sale_id", saleId)
+                    put("invoice_number", cursor.getString(cursor.getColumnIndexOrThrow("invoice_number")) ?: "")
+                    put("sale_code", cursor.getString(cursor.getColumnIndexOrThrow("sale_code")) ?: "")
+                    put("created_at", cursor.getString(cursor.getColumnIndexOrThrow("created_at")) ?: "")
+                    put("payment_type", if (isCredit) "آجل" else "نقداً")
+                    put("payment_method", cursor.getString(cursor.getColumnIndexOrThrow("payment_method")) ?: "")
+                    put("customer_name", customerName)
+                    put("customer_phone", cursor.getString(cursor.getColumnIndexOrThrow("customer_phone")) ?: "")
+                    put("customer_address", cursor.getString(cursor.getColumnIndexOrThrow("customer_address")) ?: "")
+                    put("cashier_name", cashierName)
+                    put("station_name", cursor.getString(cursor.getColumnIndexOrThrow("station_name_ar"))
+                        ?: cursor.getString(cursor.getColumnIndexOrThrow("station_name")) ?: "")
+                    put("station_phone", cursor.getString(cursor.getColumnIndexOrThrow("station_phone")) ?: "")
+                    put("company_name", cursor.getString(cursor.getColumnIndexOrThrow("company_name_ar"))
+                        ?: cursor.getString(cursor.getColumnIndexOrThrow("trade_name"))
+                        ?: cursor.getString(cursor.getColumnIndexOrThrow("company_name")) ?: "")
+                    put("logo_path", cursor.getString(cursor.getColumnIndexOrThrow("logo_path")) ?: "")
+                    put("currency_symbol", cursor.getString(cursor.getColumnIndexOrThrow("currency_symbol")) ?: "ر.ي")
+                    put("subtotal", cursor.getDouble(cursor.getColumnIndexOrThrow("subtotal")))
+                    put("discount_amount", cursor.getDouble(cursor.getColumnIndexOrThrow("discount_amount")))
+                    put("tax_amount", cursor.getDouble(cursor.getColumnIndexOrThrow("tax_amount")))
+                    put("gross_amount", cursor.getDouble(cursor.getColumnIndexOrThrow("gross_amount")))
+                    put("net_amount", cursor.getDouble(cursor.getColumnIndexOrThrow("net_amount")))
+                    put("paid_amount", cursor.getDouble(cursor.getColumnIndexOrThrow("paid_amount")))
+                    put("remaining_amount", cursor.getDouble(cursor.getColumnIndexOrThrow("remaining_amount")))
+                    put("liters", cursor.getDouble(cursor.getColumnIndexOrThrow("liters")))
+                    put("price_per_liter", cursor.getDouble(cursor.getColumnIndexOrThrow("price_per_liter")))
+                    put("status", cursor.getString(cursor.getColumnIndexOrThrow("status")) ?: "")
+                }
+                val items = JSONArray()
+                db.rawQuery(
+                    """
+                    SELECT si.line_number, si.item_type, si.product_id, si.fuel_type_id,
+                           si.quantity, si.unit_of_measure, si.unit_price, si.subtotal, si.line_total,
+                           COALESCE(pr.product_name_ar, pr.product_name, ft.fuel_name_ar, ft.fuel_name, si.item_type) AS item_name,
+                           COALESCE(u.unit_symbol, si.unit_of_measure,
+                                    CASE WHEN si.item_type = 'fuel' THEN 'لتر' ELSE 'وحدة' END) AS unit_name
+                    FROM sale_items si
+                    LEFT JOIN products pr ON si.product_id = pr.id
+                    LEFT JOIN fuel_types ft ON si.fuel_type_id = ft.id
+                    LEFT JOIN units u ON pr.unit_id = u.id
+                    WHERE si.sale_id = ?
+                    ORDER BY si.line_number ASC, si.id ASC
+                    """.trimIndent(),
+                    arrayOf(saleId.toString())
+                ).use { itemCursor ->
+                    while (itemCursor.moveToNext()) {
+                        items.put(JSONObject().apply {
+                            put("line_number", itemCursor.getInt(itemCursor.getColumnIndexOrThrow("line_number")))
+                            put("item_type", itemCursor.getString(itemCursor.getColumnIndexOrThrow("item_type")) ?: "")
+                            put("product_id", itemCursor.getInt(itemCursor.getColumnIndexOrThrow("product_id")))
+                            put("fuel_type_id", itemCursor.getInt(itemCursor.getColumnIndexOrThrow("fuel_type_id")))
+                            put("name", itemCursor.getString(itemCursor.getColumnIndexOrThrow("item_name")) ?: "بند بيع")
+                            put("unit", itemCursor.getString(itemCursor.getColumnIndexOrThrow("unit_name")) ?: "وحدة")
+                            put("quantity", itemCursor.getDouble(itemCursor.getColumnIndexOrThrow("quantity")))
+                            put("unit_price", itemCursor.getDouble(itemCursor.getColumnIndexOrThrow("unit_price")))
+                            put("subtotal", itemCursor.getDouble(itemCursor.getColumnIndexOrThrow("subtotal")))
+                            put("line_total", itemCursor.getDouble(itemCursor.getColumnIndexOrThrow("line_total")))
+                        })
+                    }
+                }
+                if (items.length() == 0) {
+                    val liters = invoice.optDouble("liters", 0.0)
+                    val price = invoice.optDouble("price_per_liter", 0.0)
+                    val fuelTypeId = cursor.getInt(cursor.getColumnIndexOrThrow("fuel_type_id"))
+                    if (liters > 0.0) {
+                        var fuelName = "الوقود"
+                        if (fuelTypeId > 0) {
+                            db.rawQuery("SELECT COALESCE(fuel_name_ar, fuel_name) FROM fuel_types WHERE id = ? LIMIT 1",
+                                arrayOf(fuelTypeId.toString())).use { fc ->
+                                if (fc.moveToFirst()) fuelName = fc.getString(0) ?: fuelName
+                            }
+                        }
+                        items.put(JSONObject().apply {
+                            put("line_number", 1); put("item_type", "fuel"); put("fuel_type_id", fuelTypeId)
+                            put("name", fuelName); put("unit", "لتر"); put("quantity", liters)
+                            put("unit_price", price); put("subtotal", liters * price); put("line_total", liters * price)
+                        })
+                    } else {
+                        val productId = cursor.getInt(cursor.getColumnIndexOrThrow("product_id"))
+                        val quantity = cursor.getDouble(cursor.getColumnIndexOrThrow("quantity"))
+                        val unitPrice = cursor.getDouble(cursor.getColumnIndexOrThrow("unit_price"))
+                        var productName = "بند بيع"
+                        if (productId > 0) {
+                            db.rawQuery("SELECT COALESCE(product_name_ar, product_name) FROM products WHERE id = ? LIMIT 1",
+                                arrayOf(productId.toString())).use { pc ->
+                                if (pc.moveToFirst()) productName = pc.getString(0) ?: productName
+                            }
+                        }
+                        if (quantity > 0.0 || unitPrice > 0.0) {
+                            items.put(JSONObject().apply {
+                                put("line_number", 1); put("item_type", "product"); put("product_id", productId)
+                                put("name", productName); put("unit", "وحدة"); put("quantity", quantity)
+                                put("unit_price", unitPrice); put("subtotal", quantity * unitPrice); put("line_total", quantity * unitPrice)
+                            })
+                        }
+                    }
+                }
+                invoice.put("items", items)
+                return invoice
+            }
+        } finally {
+            dbLock.unlock()
+        }
+    }
+
     fun getSales(stationId: Int = 1): JSONArray = getSalesTransactions(stationId, 10000)
 
     fun getTodaySales(stationId: Int = 1): JSONArray {
@@ -6870,36 +7080,29 @@ class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(co
                 val item = products.getJSONObject(i)
                 total += item.optDouble("quantity") * item.optDouble("unit_price")
             }
-
             val stationId = data.optInt("station_id", 1)
             val shiftId = getCurrentShift(stationId)?.optLong("shift_id", 1)?.toInt() ?: 1
-
+            val paymentType = data.optString("payment_type", "نقداً")
+            val isCredit = paymentType == "آجل" ||
+                data.optString("payment_method", "").equals("credit", ignoreCase = true)
+            val paymentMethod = if (isCredit) "credit" else "cash"
+            val customerPartyId = data.optInt("entity_id", 0).takeIf { it > 0 }
+            val cashierId = data.optInt("cashier_id", 1).coerceAtLeast(1)
+            val paidAmount = if (isCredit) 0.0 else total
             val saleId = insertSaleTransaction(
-                stationId = stationId,
-                shiftId = shiftId,
-                customerPartyId = data.optInt("entity_id", 0).takeIf { it > 0 },
-                fuelTypeId = null,
-                pumpId = null,
-                nozzleId = null,
-                liters = 0.0,
-                pricePerLiter = 0.0,
-                subtotal = total,
-                discountAmount = 0.0,
-                taxAmount = 0.0,
-                grossAmount = total,
-                netAmount = total,
-                paymentMethod = data.optString("payment_type", "cash"),
-                isCredit = data.optString("payment_type") == "آجل",
-                dueDate = null,
-                cashierId = 1,
-                orderType = "product"
+                stationId = stationId, shiftId = shiftId, customerPartyId = customerPartyId,
+                fuelTypeId = null, pumpId = null, nozzleId = null, liters = 0.0, pricePerLiter = 0.0,
+                subtotal = total, discountAmount = 0.0, taxAmount = 0.0, grossAmount = total, netAmount = total,
+                paymentMethod = paymentMethod, isCredit = isCredit,
+                dueDate = data.optString("due_date", "").takeIf { it.isNotBlank() },
+                cashierId = cashierId, orderType = "product"
             )
-
-            val db = writableDatabase
+            val writable = writableDatabase
             for (i in 0 until products.length()) {
                 val item = products.getJSONObject(i)
                 val qty = item.optDouble("quantity")
                 val price = item.optDouble("unit_price")
+                val lineTotal = qty * price
                 val cv = ContentValues().apply {
                     put("uuid", UUID.randomUUID().toString())
                     put("sale_id", saleId)
@@ -6908,27 +7111,40 @@ class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(co
                     put("product_id", item.getInt("product_id"))
                     put("quantity", qty)
                     put("unit_price", price)
-                    put("subtotal", qty * price)
-                    put("line_total", qty * price)
+                    put("subtotal", lineTotal)
+                    put("line_total", lineTotal)
                 }
-                db.insert("sale_items", null, cv)
-                addStockMovement(
-                    JSONObject().apply {
-                        put("product_id", item.getInt("product_id"))
-                        put("quantity", qty)
-                        put("movement_type", "out")
-                        put("reference_type", "sale")
-                        put("reference_id", saleId)
-                        put("station_id", stationId)
-                    }
-                )
+                writable.insertOrThrow("sale_items", null, cv)
+                addStockMovement(JSONObject().apply {
+                    put("product_id", item.getInt("product_id"))
+                    put("quantity", qty)
+                    put("movement_type", "out")
+                    put("reference_type", "sale")
+                    put("reference_id", saleId)
+                    put("station_id", stationId)
+                })
             }
+            val invoiceNumber = writable.rawQuery(
+                "SELECT invoice_number FROM sales_transactions WHERE id = ? LIMIT 1",
+                arrayOf(saleId.toString())
+            ).use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) ?: "INV-$saleId" else "INV-$saleId"
+            }
+            writable.update("sales_transactions", ContentValues().apply {
+                put("paid_amount", paidAmount)
+                put("remaining_amount", (total - paidAmount).coerceAtLeast(0.0))
+                put("payment_status", if (isCredit) "pending" else "paid")
+            }, "id = ?", arrayOf(saleId.toString()))
             result.put("success", true)
             result.put("sale_id", saleId)
-            result.put("invoice_number", "INV-$saleId")
+            result.put("invoice_number", invoiceNumber)
+            result.put("payment_type", paymentType)
+            result.put("total_amount", total)
+            result.put("amount_paid", paidAmount)
+            result.put("remaining_amount", (total - paidAmount).coerceAtLeast(0.0))
         } catch (e: Exception) {
             result.put("success", false)
-            result.put("error", e.message)
+            result.put("error", e.message ?: "فشل ترحيل الفاتورة")
         } finally {
             dbLock.unlock()
         }
