@@ -6901,9 +6901,9 @@ class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(co
                 LEFT JOIN companies c ON st.company_id = c.id
                 LEFT JOIN currencies cur ON s.currency_id = cur.id
                 WHERE s.station_id = ? AND s.is_deleted = 0
-                  AND (" + identifierSelection + ")
+                  AND (IDENTIFIER_SELECTION)
                 LIMIT 1
-                """.trimIndent(),
+                """.trimIndent().replace("IDENTIFIER_SELECTION", identifierSelection),
                 arrayOf(stationId.toString(), identifierValue)
             ).use { cursor ->
                 if (!cursor.moveToFirst()) throw IllegalArgumentException("الفاتورة غير موجودة")
