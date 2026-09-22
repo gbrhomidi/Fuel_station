@@ -2208,8 +2208,11 @@ fun getDashboardStats(jsonData: String = "{}"): String {
             if (!checkPermission("sales", "update")) return errorResponse("لا تملك صلاحية التحديث")
             val db = getDbHelper() ?: return errorResponse("قاعدة البيانات غير متاحة")
             return try {
-                val result = db.completeSale(JSONObject(jsonData))
-                dataResponse(result)
+                val payload = JSONObject(jsonData)
+                if (!payload.has("cashier_id") && currentUserId > 0L) {
+                    payload.put("cashier_id", currentUserId)
+                }
+                dataResponse(db.completeSale(payload))
             } catch (e: Exception) {
                 DebugLogger.logException("Sale", e)
                 errorResponse(e.message)
@@ -2240,6 +2243,32 @@ fun getDashboardStats(jsonData: String = "{}"): String {
                 dataResponse(sales)
             } catch (e: Exception) {
                 DebugLogger.logException("Sale", e)
+                errorResponse(e.message)
+            }
+        }
+
+        @JavascriptInterface
+        fun searchInvoices(startDate: String?, endDate: String?): String {
+            DebugLogger.info("WebAppInterface", "searchInvoices called")
+            if (!checkPermission("sales", "read")) return errorResponse("لا تملك صلاحية القراءة")
+            val db = getDbHelper() ?: return errorResponse("قاعدة البيانات غير متاحة")
+            return try {
+                dataResponse(db.searchInvoices(1, startDate, endDate, 500))
+            } catch (e: Exception) {
+                DebugLogger.logException("InvoiceSearch", e)
+                errorResponse(e.message)
+            }
+        }
+
+        @JavascriptInterface
+        fun getSaleInvoice(identifier: String): String {
+            DebugLogger.info("WebAppInterface", "getSaleInvoice called: $identifier")
+            if (!checkPermission("sales", "read")) return errorResponse("لا تملك صلاحية القراءة")
+            val db = getDbHelper() ?: return errorResponse("قاعدة البيانات غير متاحة")
+            return try {
+                dataResponse(db.getSaleInvoice(identifier, 1))
+            } catch (e: Exception) {
+                DebugLogger.logException("Invoice", e)
                 errorResponse(e.message)
             }
         }
