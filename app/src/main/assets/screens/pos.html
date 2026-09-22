@@ -3904,19 +3904,19 @@ function searchInvoices() {
             }
             invoices.forEach(invoice => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = \`
-                    <td>\${escapeHtml(invoice.invoice_number || '')}</td>
-                    <td>\${escapeHtml(invoice.cashier_name || '')}</td>
-                    <td>\${escapeHtml(invoice.customer_name || 'عميل نقدي')}</td>
-                    <td>\${escapeHtml(invoice.payment_type || '')}</td>
-                    <td>\${formatInvoiceNumber(invoice.total_amount)}</td>
-                    <td>\${formatInvoiceNumber(invoice.amount_paid)}</td>
-                    <td>\${escapeHtml(invoice.sale_date || '')}</td>
+                tr.innerHTML = `
+                    <td>${escapeHtml(invoice.invoice_number || '')}</td>
+                    <td>${escapeHtml(invoice.cashier_name || '')}</td>
+                    <td>${escapeHtml(invoice.customer_name || 'عميل نقدي')}</td>
+                    <td>${escapeHtml(invoice.payment_type || '')}</td>
+                    <td>${formatInvoiceNumber(invoice.total_amount)}</td>
+                    <td>${formatInvoiceNumber(invoice.amount_paid)}</td>
+                    <td>${escapeHtml(invoice.sale_date || '')}</td>
                     <td>
-                        <button class="btn btn-sm btn-primary" onclick="loadInvoice('\${String(invoice.sale_id).replace(/'/g, "\\'")}')"><i class="fas fa-eye"></i> عرض</button>
-                        <button class="btn btn-sm btn-secondary" onclick="printInvoiceById('\${String(invoice.sale_id).replace(/'/g, "\\'")}')"><i class="fas fa-print"></i> طباعة</button>
+                        <button class="btn btn-sm btn-primary" onclick="loadInvoice('${String(invoice.sale_id).replace(/'/g, "\\'")}')"><i class="fas fa-eye"></i> عرض</button>
+                        <button class="btn btn-sm btn-secondary" onclick="printInvoiceById('${String(invoice.sale_id).replace(/'/g, "\\'")}')"><i class="fas fa-print"></i> طباعة</button>
                     </td>
-                \`;
+                `;
                 tbody.appendChild(tr);
             });
         })
@@ -3997,29 +3997,29 @@ function buildInvoiceMarkup(invoice, rootId = 'invoicePrintRoot') {
     const customer = invoice.customer_name || 'عميل نقدي';
     const cashier = invoice.cashier_name || 'غير محدد';
     const date = invoice.created_at || '';
-    const logoHtml = logo ? \`<img src="\${escapeHtml(logo)}" alt="شعار">\` : '<span class="invoice-logo-fallback">⛽</span>';
-    const rows = items.length ? items.map(item => \`
+    const logoHtml = logo ? `<img src="${escapeHtml(logo)}" alt="شعار">` : '<span class="invoice-logo-fallback">⛽</span>';
+    const rows = items.length ? items.map(item => `
         <tr>
-            <td class="details">\${escapeHtml(item.name || 'بند بيع')}</td>
-            <td>\${formatInvoiceNumber(item.quantity)}</td>
-            <td>\${formatInvoiceNumber(item.unit_price)}</td>
-            <td>\${formatInvoiceNumber(item.line_total)} \${escapeHtml(currency)}</td>
-        </tr>\`).join('') : '<tr><td class="details">لا توجد بنود مسجلة</td><td>0.00</td><td>0.00</td><td>0.00</td></tr>';
-    return \`
-      <div id="\${rootId}" class="invoice-paper">
+            <td class="details">${escapeHtml(item.name || 'بند بيع')}</td>
+            <td>${formatInvoiceNumber(item.quantity)}</td>
+            <td>${formatInvoiceNumber(item.unit_price)}</td>
+            <td>${formatInvoiceNumber(item.line_total)} ${escapeHtml(currency)}</td>
+        </tr>`).join('') : '<tr><td class="details">لا توجد بنود مسجلة</td><td>0.00</td><td>0.00</td><td>0.00</td></tr>';
+    return `
+      <div id="${rootId}" class="invoice-paper">
         <div class="invoice-head">
           <div class="invoice-meta">
-            <div class="meta-line"><strong>التاريخ:</strong> \${escapeHtml(date)}</div>
-            <div class="meta-line"><strong>NO:</strong> \${escapeHtml(invoice.invoice_number || '')}</div>
+            <div class="meta-line"><strong>التاريخ:</strong> ${escapeHtml(date)}</div>
+            <div class="meta-line"><strong>NO:</strong> ${escapeHtml(invoice.invoice_number || '')}</div>
           </div>
           <div class="invoice-title-box">
             <h1>فاتورة بيع</h1>
-            <div class="invoice-payment">\${payment === 'نقداً' ? '☑ نقداً' : '□ نقداً'} &nbsp;&nbsp; \${payment === 'آجل' ? '☑ آجل' : '□ آجل'}</div>
+            <div class="invoice-payment">${payment === 'نقداً' ? '☑ نقداً' : '□ نقداً'} &nbsp;&nbsp; ${payment === 'آجل' ? '☑ آجل' : '□ آجل'}</div>
           </div>
-          <div class="invoice-logo">\${logoHtml}</div>
+          <div class="invoice-logo">${logoHtml}</div>
         </div>
-        <div class="invoice-company">\${escapeHtml(company)}</div>
-        <div class="invoice-request">مطلوب من الأخ/الأخت: <span>\${escapeHtml(customer)}</span>\${invoice.customer_phone ? \` — \${escapeHtml(invoice.customer_phone)}\` : ''}</div>
+        <div class="invoice-company">${escapeHtml(company)}</div>
+        <div class="invoice-request">مطلوب من الأخ/الأخت: <span>${escapeHtml(customer)}</span>${invoice.customer_phone ? ` — ${escapeHtml(invoice.customer_phone)}` : ''}</div>
         <table class="invoice-table">
           <thead><tr>
             <th style="width:42%">التفاصيل<br><small>Description</small></th>
@@ -4027,19 +4027,19 @@ function buildInvoiceMarkup(invoice, rootId = 'invoicePrintRoot') {
             <th style="width:21%">سعر الوحدة<br><small>Unit Price</small></th>
             <th style="width:23%">القيمة الإجمالية<br><small>Total Amount</small></th>
           </tr></thead>
-          <tbody>\${rows}</tbody>
+          <tbody>${rows}</tbody>
         </table>
         <div class="invoice-total">
           <div class="label">الإجمالي<br><small>TOTAL</small></div>
-          <div class="value">\${formatInvoiceNumber(invoice.net_amount)} \${escapeHtml(currency)}</div>
+          <div class="value">${formatInvoiceNumber(invoice.net_amount)} ${escapeHtml(currency)}</div>
         </div>
         <div class="invoice-signatures">
-          <div><div>اسم المستلم:</div><div class="invoice-signature-line">\${escapeHtml(customer)}</div></div>
+          <div><div>اسم المستلم:</div><div class="invoice-signature-line">${escapeHtml(customer)}</div></div>
           <div><div>التوقيع:</div><div class="invoice-signature-line"></div></div>
-          <div><div>المبيعات:</div><div class="invoice-signature-line">\${escapeHtml(cashier)}</div></div>
+          <div><div>المبيعات:</div><div class="invoice-signature-line">${escapeHtml(cashier)}</div></div>
         </div>
         <div class="invoice-footer">استلمت البضاعة الموضحة أعلاه كاملة وسليمة</div>
-      </div>\`;
+      </div>`;
 }
 function renderInvoicePreview(invoice) {
     const container = document.getElementById('invoicePreviewContent');
@@ -4069,13 +4069,13 @@ function printInvoiceDocument(invoice) {
     const markup = buildInvoiceMarkup(invoice, 'invoicePrintRoot');
     const printCss = document.querySelector('style')?.textContent || '';
     printWindow.document.open();
-    printWindow.document.write(\`
+    printWindow.document.write(`
       <!doctype html><html lang="ar" dir="rtl"><head>
       <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>فاتورة \${escapeHtml(invoice.invoice_number || '')}</title>
-      <style>\${printCss}@page { size: A4 portrait; margin: 8mm; } html,body{margin:0;padding:0;background:#fff;}
+      <title>فاتورة ${escapeHtml(invoice.invoice_number || '')}</title>
+      <style>${printCss}@page { size: A4 portrait; margin: 8mm; } html,body{margin:0;padding:0;background:#fff;}
       .invoice-paper{margin:0 auto;box-shadow:none;max-width:none;width:100%;}</style>
-      </head><body>\${markup}</body></html>\`);
+      </head><body>${markup}</body></html>`);
     printWindow.document.close();
     setTimeout(() => { printWindow.focus(); printWindow.print(); }, 350);
 }
